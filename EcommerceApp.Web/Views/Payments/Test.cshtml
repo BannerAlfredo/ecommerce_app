@@ -1,0 +1,174 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Prueba de Pagos";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">@ViewData["Title"]</h2>
+
+    <!-- Formulario de Pago -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <strong>Procesar Pago</strong>
+        </div>
+        <div class="card-body">
+            <form id="paymentForm">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="OrderId" class="form-label">Order ID</label>
+                        <input type="number" class="form-control" id="OrderId" name="OrderId" required />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="Amount" class="form-label">Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="Amount" name="Amount" required />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="PaymentMethod" class="form-label">Payment Method</label>
+                        <select class="form-select" id="PaymentMethod" name="PaymentMethod" required>
+                            <option value="">-- Seleccionar --</option>
+                            <option value="CreditCard">CreditCard</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="BankTransfer">BankTransfer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="CardHolderName" class="form-label">Cardholder Name</label>
+                        <input type="text" class="form-control" id="CardHolderName" name="CardHolderName" required />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="CardNumber" class="form-label">Card Number</label>
+                        <input type="text" maxlength="19" class="form-control" id="CardNumber" name="CardNumber" placeholder="XXXX XXXX XXXX XXXX" required />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="ExpiryMonth" class="form-label">Expiry Month</label>
+                        <input type="number" min="1" max="12" class="form-control" id="ExpiryMonth" name="ExpiryMonth" required />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="ExpiryYear" class="form-label">Expiry Year</label>
+                        <input type="number" min="2025" class="form-control" id="ExpiryYear" name="ExpiryYear" required />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="Cvv" class="form-label">CVV</label>
+                        <input type="text" maxlength="4" class="form-control" id="Cvv" name="Cvv" required />
+                    </div>
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Procesar Pago</button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="CardType" class="form-label">Card Type</label>
+                        <select class="form-select" id="CardType" name="CardType" required>
+                            <option value="">-- Seleccionar --</option>
+                            <option value="Visa">Visa</option>
+                            <option value="MasterCard">MasterCard</option>
+                            <option value="Amex">Amex</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="CardLastFour" class="form-label">Card Last Four</label>
+                        <input type="text" maxlength="4" class="form-control" id="CardLastFour" name="CardLastFour" readonly />
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Pagos -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><strong>Listado de Pagos</strong></span>
+            <button id="loadPayments" class="btn btn-outline-secondary btn-sm">Cargar Pagos</button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped" id="paymentsTable">
+                    <thead>
+                        <tr>
+                            <th>PaymentId</th>
+                            <th>OrderId</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Holder</th>
+                            <th>Last4</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>TransactionId</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('paymentForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            // Extraer últimos 4 dígitos automáticamente
+            if (data.CardNumber) {
+                data.CardLastFour = data.CardNumber.replace(/\s+/g, '').slice(-4);
+                document.getElementById('CardLastFour').value = data.CardLastFour;
+            }
+
+            try {
+                const resp = await fetch('/api/Payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await resp.json();
+                if (!resp.ok) throw result;
+                alert('Pago exitoso: ' + JSON.stringify(result));
+                loadAllPayments();
+            } catch (err) {
+                console.error(err);
+                const msg = err && err.error ? JSON.stringify(err.error) : 'Error al procesar el pago.';
+                alert(msg);
+            }
+        });
+
+        document.getElementById('loadPayments').addEventListener('click', loadAllPayments);
+
+        async function loadAllPayments() {
+            const tbody = document.querySelector('#paymentsTable tbody');
+            tbody.innerHTML = '';
+            try {
+                const resp = await fetch('/api/Payment');
+                const payments = await resp.json();
+                payments.forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${p.paymentId}</td>
+                        <td>${p.orderId}</td>
+                        <td>${p.amount.toFixed(2)}</td>
+                        <td>${p.paymentMethod}</td>
+                        <td>${p.cardHolderName || ''}</td>
+                        <td>${p.cardLastFour}</td>
+                        <td>${p.cardType}</td>
+                        <td>${p.paymentStatus}</td>
+                        <td>${p.transactionId}</td>
+                        <td>${new Date(p.paymentDate).toLocaleString()}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+                alert('Error al cargar pagos.');
+            }
+        }
+
+        // Carga inicial
+        loadAllPayments();
+    </script>
+}
