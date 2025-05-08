@@ -43,7 +43,7 @@ project_ecommerce/
 ### 1. Clona el proyecto
 
 ```bash
-git clone https://github.com/tu_usuario/project_ecommerce.git
+https://github.com/BannerAlfredo/ecommerce_app.git
 cd project_ecommerce
 ```
 
@@ -112,7 +112,7 @@ dotnet run --project EcommerceApp.Web
 
 ## 🧑‍💻 Autor
 
-Desarrollado por 
+Desarrollado por Banner Rodriguez
 
 ---
 
